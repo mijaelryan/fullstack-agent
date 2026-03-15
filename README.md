@@ -105,25 +105,25 @@ User > Los botones no se ven. Arreglalo.
 ### Agente en acción
 
 **Inicio y primer prompt:**
-![inicio del agente](assets/01_agent_start.png)
+![inicio del agente](assets/01_agent_start.jpg)
 
 **Agente escribiendo archivos:**
-![agente trabajando](assets/02_agent_working.png)
+![agente trabajando](assets/02_agent_working.jpeg)
 
 **App generada — antes del fix (botones con texto invisible):**
-![app antes](assets/05_app_before.png)
+![app antes](assets/05_app_before.jpeg)
 
 **Segundo prompt — fix aplicado:**
-![segundo prompt](assets/07_agent_task2.png)
+![segundo prompt](assets/07_agent_task2.jpg)
 
 **App después del fix:**
-![app después](assets/09_app_after.png)
+![app después](assets/09_app_after.jpeg)
 
 **Tercer prompt — compresión de contexto activada (verde):**
-![compresión de contexto](assets/12_context_compression.png)
+![compresión de contexto](assets/12_context_compression.jpeg)
 
 **App final con tachado y contador de tareas:**
-![app final](assets/14_app_final.png)
+![app final](assets/14_app_final.jpeg)
 
 ## App de demo
 
