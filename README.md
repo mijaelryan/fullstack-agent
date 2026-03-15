@@ -100,6 +100,31 @@ Sin cerrar el agente, podés continuar con el mismo historial:
 User > Los botones no se ven. Arreglalo.
 ```
 
+## Capturas
+
+### Agente en acción
+
+**Inicio y primer prompt:**
+![inicio del agente](assets/01_agent_start.png)
+
+**Agente escribiendo archivos:**
+![agente trabajando](assets/02_agent_working.png)
+
+**App generada — antes del fix (botones con texto invisible):**
+![app antes](assets/05_app_before.png)
+
+**Segundo prompt — fix aplicado:**
+![segundo prompt](assets/07_agent_task2.png)
+
+**App después del fix:**
+![app después](assets/09_app_after.png)
+
+**Tercer prompt — compresión de contexto activada (verde):**
+![compresión de contexto](assets/12_context_compression.png)
+
+**App final con tachado y contador de tareas:**
+![app final](assets/14_app_final.png)
+
 ## App de demo
 
 En `demo/win95-todo-app/` hay una app de ejemplo generada por el agente. Para correrla:
