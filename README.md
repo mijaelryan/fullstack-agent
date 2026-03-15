@@ -19,8 +19,14 @@ fullstack-agent/
 ├── lib/
 │   ├── sbx_tools.py   ← herramientas de filesystem (Parte 1)
 │   ├── context.py     ← compresión de contexto / Runtime Summary (Parte 2)
+│   ├── sbx_download.py← descarga del sandbox al sistema local
 │   └── prompts.py     ← SYSTEM_PROMPT_WEB_DEV (Parte 3)
+├── demo/
+│   └── win95-todo-app ← app de ejemplo generada por el agente
+├── tests/             ← tests unitarios de cada componente
 ├── notebook.ipynb     ← test formal de la consigna (Parte 4)
+├── workspace/         ← proyectos generados por el agente (gitignored)
+├── env.example        ← plantilla de credenciales
 ├── requirements.txt
 └── README.md
 ```
@@ -28,11 +34,40 @@ fullstack-agent/
 ## Setup
 
 ```bash
+# 1. Clonar el repo
+git clone https://github.com/mijaelryan/fullstack-agent.git
+cd fullstack-agent
+
+# 2. Crear y activar el entorno virtual
+python -m venv .venv
+source .venv/bin/activate      # Mac/Linux
+# .venv\Scripts\activate       # Windows
+
+# 3. Instalar dependencias
 pip install -r requirements.txt
 
-export GITHUB_TOKEN=tu_token   # https://github.com/settings/tokens
-export E2B_API_KEY=tu_clave    # https://e2b.dev
+# 4. Configurar credenciales
+cp env.example .env
+# Editá .env y completá tus claves:
+#   GITHUB_TOKEN → https://github.com/settings/tokens (modelo: gpt-4o)
+#   E2B_API_KEY  → https://e2b.dev
 ```
+
+> **Nota:** Para correr la app generada necesitás [Node.js v18+](https://nodejs.org) instalado localmente.
+
+## Tests
+
+```bash
+cd tests/
+python test_connection.py    # verifica que LLM y sandbox conectan
+python test_tools.py         # prueba las 6 herramientas filesystem
+python test_agent_basic.py   # prueba el loop del agente
+python test_agent_history.py # prueba el historial entre turnos
+python test_download.py      # prueba la descarga del sandbox
+python test_tools_fixed.py   # prueba las herramientas después del fix
+```
+
+Correr en orden antes de usar el agente por primera vez.
 
 ## Uso
 
@@ -50,7 +85,7 @@ python run_agent.py
 User > Crea una app de lista de tareas estilo Windows 95
 ```
 
-El agente escribe los archivos en el sandbox E2B y al terminar indica cómo correr la app:
+El agente escribe los archivos en el sandbox E2B, verifica que compila con `npm run build` y descarga el proyecto a `workspace/`:
 
 ```
 Agent > El proyecto fue generado. Para ejecutarlo:
@@ -62,18 +97,33 @@ Agent > El proyecto fue generado. Para ejecutarlo:
 Sin cerrar el agente, podés continuar con el mismo historial:
 
 ```
-User > Los íconos del nav son blancos y no se ven. Arreglalo.
+User > Los botones no se ven. Arreglalo.
 ```
+
+## App de demo
+
+En `demo/win95-todo-app/` hay una app de ejemplo generada por el agente. Para correrla:
+
+```bash
+cd demo/win95-todo-app
+npm install
+npm run dev
+```
+
+Abrí `http://localhost:3000`.
 
 ## Cómo funciona
 
 ```
 run_agent(query)
-  → maybe_compress()    # comprime si el historial supera 40k tokens
-  → llm()               # GitHub Models gpt-4o
+  → maybe_compress()    # comprime si el historial supera 6k tokens estimados
+  → llm()               # GitHub Models gpt-4o para generación de código
   → execute_tool()      # herramientas filesystem en E2B
+  → _try_download()     # descarga workspace/ al sistema local
   → loop hasta que no haya más tool calls
 ```
+
+> **Nota técnica:** El agente usa `gpt-4o` para generar código y `gpt-4o-mini` para comprimir el historial — esto es intencional para optimizar el uso de tokens en las sesiones largas.
 
 ## Herramientas disponibles
 
@@ -85,3 +135,12 @@ run_agent(query)
 | `search_file_content(pattern)` | Busca regex, devuelve JSON paginado |
 | `replace_in_file(path, old, new)` | Reemplaza texto en un archivo |
 | `glob(pattern)` | Busca archivos por nombre o extensión |
+| `execute_bash(cmd)` | Corre comandos bash (npm install, npm run build, etc.) |
+
+## Notas importantes
+
+- La carpeta `workspace/` es generada automáticamente y está en `.gitignore` — no subirla al repo
+- GitHub Models tiene un límite de ~50 requests/día por cuenta y 8k tokens por request
+- La compresión de contexto se activa automáticamente a los 6k tokens estimados
+- El agente tiene un límite de 40 pasos por sesión como parada de seguridad
+- Si el agente falla por límite de tokens, abrí sesión nueva con el prompt completo

@@ -27,8 +27,8 @@ from lib.prompts import SYSTEM_PROMPT_WEB_DEV
 # Constantes
 # ---------------------------------------------------------------------------
 
-MODEL_ID  = "gpt-4o"          # modelo recomendado para generación de código
-MAX_STEPS = 30                 # parada de seguridad
+MODEL_ID  = "gpt-4o"     # más tokens disponibles en GitHub Models
+MAX_STEPS = 40                 # parada de seguridad
 
 
 # ---------------------------------------------------------------------------
@@ -135,12 +135,20 @@ def llm(client: OpenAI, messages: list, system: str, tools: list = None):
                         },
                     })
 
+            # Mensaje assistant con tool_calls (puede tener texto también)
             if tool_calls:
-                oai_messages.append({"role": "assistant", "content": None, "tool_calls": tool_calls})
-            if tool_results:
-                oai_messages.extend(tool_results)
+                oai_messages.append({
+                    "role":       "assistant",
+                    "content":    text_parts[0]["text"] if text_parts else None,
+                    "tool_calls": tool_calls,
+                })
             elif text_parts:
                 oai_messages.append({"role": role, "content": text_parts})
+
+            # Tool results van SIEMPRE después del assistant, uno por mensaje
+            if tool_results:
+                oai_messages.extend(tool_results)
+
         else:
             oai_messages.append({"role": role, "content": content})
 
@@ -342,4 +350,50 @@ def run_agent(
     else:
         print(f"\n[agente] ⚠️  Límite de {max_steps} pasos alcanzado.")
 
+    _try_download(sbx)
+
     return messages, last_text
+
+# ---------------------------------------------------------------------------
+# Descarga automática del workspace generado
+# ---------------------------------------------------------------------------
+
+def _try_download(sbx: Sandbox):
+    """
+    Detecta si el agente generó proyectos en /home/user/workspace/ y los descarga.
+    """
+    from lib.sbx_download import download_workspace
+
+    check = sbx.run_code("""
+import os, json
+base = "/home/user/workspace"
+if not os.path.isdir(base):
+    print(json.dumps([]))
+else:
+    projects = [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))]
+    print(json.dumps(projects))
+""")
+    stdout = "".join(check.logs.stdout).strip()
+    if not stdout:
+        return
+
+    try:
+        projects = json.loads(stdout)
+    except Exception:
+        return
+
+    if not projects:
+        return
+
+    for project in projects:
+        sbx_path   = f"/home/user/workspace/{project}"
+        local_path = os.path.join("workspace", project)
+        print(f"\n{'='*60}")
+        print(f"  Proyecto creado en sandbox ✔")
+        print(f"  Descargando a {local_path} ✔")
+        download_workspace(sbx, sbx_path, local_root="workspace")
+        print(f"\n  Para ejecutarlo:\n")
+        print(f"    cd {local_path}")
+        print(f"    npm install")
+        print(f"    npm run dev")
+        print(f"{'='*60}\n")

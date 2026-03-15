@@ -14,7 +14,7 @@ import json
 # Configuración
 # ---------------------------------------------------------------------------
 
-MAX_TOKENS        = 40_000   # tope en tokens estimados antes de comprimir
+MAX_TOKENS        = 6_000   # tope en tokens estimados antes de comprimir
 COMPRESSION_RATIO = 0.70     # fracción de mensajes antiguos a comprimir
 
 
@@ -71,6 +71,22 @@ def compress_context(messages: list, llm_client) -> list:
         return messages
 
     cut = max(2, int(len(messages) * COMPRESSION_RATIO))
+
+    # Nunca cortar en medio de un par tool_call / tool_result
+    # Retroceder hasta encontrar un mensaje "user" limpio (sin toolResult)
+    while cut > 0 and cut < len(messages):
+        msg = messages[cut]
+        content_parts = msg.get("content", [])
+        if isinstance(content_parts, list):
+            has_tool_result = any(
+                isinstance(p, dict) and "toolResult" in p
+                for p in content_parts
+            )
+            if has_tool_result:
+                cut += 1
+                continue
+        break
+
     old_msgs    = messages[:cut]
     recent_msgs = messages[cut:]
 

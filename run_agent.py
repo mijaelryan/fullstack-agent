@@ -9,6 +9,13 @@ Uso:
 import os
 import sys
 
+# Cargar .env ANTES de verificar credenciales
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 # ---------------------------------------------------------------------------
 # Verificar credenciales antes de importar nada pesado
 # ---------------------------------------------------------------------------

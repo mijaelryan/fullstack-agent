@@ -1,60 +1,28 @@
 """
 lib/sbx_tools.py
 Herramientas de sistema de archivos para el sandbox E2B.
-El agente las usa para leer, escribir y navegar el proyecto generado.
 """
 
 import json
-import re
 from typing import Any, Dict, Optional
 from e2b_code_interpreter import Sandbox
 
 
-# ---------------------------------------------------------------------------
-# Excepción base
-# ---------------------------------------------------------------------------
-
 class ToolError(Exception):
-    """Error controlado dentro de una herramienta del sandbox."""
     pass
 
 
-# ---------------------------------------------------------------------------
-# Helpers internos
-# ---------------------------------------------------------------------------
-
 def _run(sbx: Sandbox, code: str) -> str:
-    """Ejecuta código Python en el sandbox y retorna stdout, o lanza ToolError."""
     execution = sbx.run_code(code)
     if execution.error:
         raise ToolError(f"{execution.error.name}: {execution.error.value}")
-    stderr = list(execution.logs.stderr) if execution.logs.stderr else []
+    stderr = [str(s) for s in execution.logs.stderr] if execution.logs.stderr else []
     if stderr:
         raise ToolError("\n".join(stderr))
-    return "".join(execution.logs.stdout) if execution.logs.stdout else ""
+    return "".join(str(s) for s in execution.logs.stdout) if execution.logs.stdout else ""
 
-
-def _run_bash(sbx: Sandbox, cmd: str) -> str:
-    """Ejecuta un comando bash en el sandbox y retorna stdout, o lanza ToolError."""
-    code = f"""
-import subprocess
-result = subprocess.run({repr(cmd)}, shell=True, capture_output=True, text=True)
-if result.returncode != 0:
-    raise RuntimeError(result.stderr.strip() or f"exit code {{result.returncode}}")
-print(result.stdout, end="")
-"""
-    return _run(sbx, code)
-
-
-# ---------------------------------------------------------------------------
-# Parte 1 — Herramientas públicas
-# ---------------------------------------------------------------------------
 
 def list_directory(sbx: Sandbox, path: str = ".") -> Dict[str, Any]:
-    """
-    Lista archivos y carpetas en `path` dentro del sandbox.
-    Retorna un dict con 'entries': lista de {name, type, size}.
-    """
     try:
         code = f"""
 import os, json
@@ -71,22 +39,11 @@ print(json.dumps(entries))
 """
         output = _run(sbx, code)
         return {"path": path, "entries": json.loads(output)}
-    except ToolError as e:
-        return {"error": str(e)}
     except Exception as e:
         return {"error": str(e)}
 
 
-def read_file(
-    sbx: Sandbox,
-    path: str,
-    limit: Optional[int] = None,
-    offset: int = 0,
-) -> Dict[str, Any]:
-    """
-    Lee el contenido de un archivo en el sandbox.
-    Soporta `offset` (byte de inicio) y `limit` (máx. caracteres).
-    """
+def read_file(sbx: Sandbox, path: str, limit: Optional[int] = None, offset: int = 0) -> Dict[str, Any]:
     try:
         limit_expr = str(limit) if limit is not None else ""
         code = f"""
@@ -97,23 +54,15 @@ print(content, end="")
 """
         content = _run(sbx, code)
         return {"path": path, "content": content, "size": len(content)}
-    except ToolError as e:
-        return {"error": str(e)}
     except Exception as e:
         return {"error": str(e)}
 
 
 def write_file(sbx: Sandbox, path: str, content: str) -> Dict[str, Any]:
-    """
-    Escribe `content` en `path` dentro del sandbox.
-    Crea los directorios intermedios si no existen.
-    """
     try:
-        # sbx.files.write es la forma más directa y evita problemas de escaping
         sbx.files.write(path, content)
         return {"message": f"✅ Escrito: {path}", "path": path, "size": len(content)}
-    except Exception as e:
-        # Fallback: crear dirs y escribir vía Python
+    except Exception:
         try:
             code = f"""
 import os
@@ -124,84 +73,52 @@ print("ok")
 """
             _run(sbx, code)
             return {"message": f"✅ Escrito: {path}", "path": path, "size": len(content)}
-        except ToolError as e2:
-            return {"error": str(e2)}
+        except ToolError as e:
+            return {"error": str(e)}
 
 
-def search_file_content(
-    sbx: Sandbox,
-    pattern: str,
-    path: str = ".",
-    max_results: int = 20,
-    page: int = 0,
-) -> Dict[str, Any]:
-    """
-    Busca `pattern` (regex) en todos los archivos bajo `path`.
-    Devuelve JSON paginado: {matches, total, page, has_more}.
-    Cada match: {file, line_number, line}.
-    """
+def search_file_content(sbx: Sandbox, pattern: str, path: str = ".", max_results: int = 20, page: int = 0) -> Dict[str, Any]:
     try:
         code = f"""
 import os, re, json
-
 pattern = re.compile({repr(pattern)})
 root    = {repr(path)}
 matches = []
-
-for dirpath, _, filenames in os.walk(root):
+EXCLUDE = {"node_modules", ".next", ".git", "dist", "build"}
+for dirpath, dirnames, filenames in os.walk(root):
+    dirnames[:] = [d for d in dirnames if d not in EXCLUDE]
     for fname in filenames:
         fpath = os.path.join(dirpath, fname)
         try:
             with open(fpath, "r", encoding="utf-8", errors="ignore") as f:
                 for i, line in enumerate(f, 1):
                     if pattern.search(line):
-                        matches.append({{
-                            "file":        fpath,
-                            "line_number": i,
-                            "line":        line.rstrip(),
-                        }})
+                        matches.append({{"file": fpath, "line_number": i, "line": line.rstrip()}})
         except Exception:
             continue
-
 page       = {page}
 per_page   = {max_results}
 start      = page * per_page
 end        = start + per_page
-page_items = matches[start:end]
-
-print(json.dumps({{
-    "matches":  page_items,
-    "total":    len(matches),
-    "page":     page,
-    "has_more": end < len(matches),
-}}))
+print(json.dumps({{"matches": matches[start:end], "total": len(matches), "page": page, "has_more": end < len(matches)}}))
 """
         output = _run(sbx, code)
         return json.loads(output)
-    except ToolError as e:
-        return {"error": str(e)}
     except Exception as e:
         return {"error": str(e)}
 
 
 def replace_in_file(sbx: Sandbox, path: str, old: str, new: str) -> Dict[str, Any]:
-    """
-    (Opcional) Reemplaza la primera ocurrencia de `old` por `new` en `path`.
-    Retorna cuántas sustituciones se hicieron.
-    """
     try:
         code = f"""
 with open({repr(path)}, "r", encoding="utf-8") as f:
     content = f.read()
-
-new_content, count = {repr(old)}, 0
+count = 0
 if {repr(old)} in content:
-    new_content = content.replace({repr(old)}, {repr(new)}, 1)
+    content = content.replace({repr(old)}, {repr(new)}, 1)
     count = 1
-
 with open({repr(path)}, "w", encoding="utf-8") as f:
-    f.write(new_content)
-
+    f.write(content)
 print(count)
 """
         count_str = _run(sbx, code).strip()
@@ -209,17 +126,11 @@ print(count)
         if count == 0:
             return {"error": f"Texto no encontrado en {path}"}
         return {"message": f"✅ Reemplazado en {path}", "replacements": count}
-    except ToolError as e:
-        return {"error": str(e)}
     except Exception as e:
         return {"error": str(e)}
 
 
 def glob(sbx: Sandbox, pattern: str, path: str = ".") -> Dict[str, Any]:
-    """
-    (Opcional) Busca archivos por nombre/extensión usando glob.
-    Ej: pattern='**/*.tsx', path='/app'
-    """
     try:
         code = f"""
 import glob as _glob, json, os
@@ -229,15 +140,31 @@ print(json.dumps(sorted(matches)))
         output = _run(sbx, code)
         files = json.loads(output)
         return {"pattern": pattern, "path": path, "files": files, "count": len(files)}
-    except ToolError as e:
-        return {"error": str(e)}
     except Exception as e:
         return {"error": str(e)}
 
 
-# ---------------------------------------------------------------------------
-# Registry: función → implementación + schema OpenAI
-# ---------------------------------------------------------------------------
+def execute_bash(sbx: Sandbox, cmd: str, workdir: str = "/home/user/workspace") -> Dict[str, Any]:
+    try:
+        code = f"""
+import subprocess, os
+result = subprocess.run({repr(cmd)}, shell=True, capture_output=True, text=True, cwd={repr(workdir)})
+import json
+print(json.dumps({{"stdout": result.stdout[:4000], "stderr": result.stderr[:4000], "exit_code": result.returncode}}))
+"""
+        # Usar run_code directamente para capturar stdout sin que stderr aborte
+        execution = sbx.run_code(code)
+        output = "".join(str(s) for s in execution.logs.stdout) if execution.logs.stdout else ""
+        if not output:
+            return {"error": "Sin output del sandbox", "success": False}
+        data = json.loads(output.strip())
+        success = data["exit_code"] == 0
+        data["success"] = success
+        data["message"] = "✅ Comando exitoso" if success else f"❌ Error (exit {data['exit_code']}): {data['stderr'][:300]}"
+        return data
+    except Exception as e:
+        return {"error": str(e), "success": False}
+
 
 TOOLS_IMPL = {
     "list_directory":      list_directory,
@@ -246,6 +173,7 @@ TOOLS_IMPL = {
     "search_file_content": search_file_content,
     "replace_in_file":     replace_in_file,
     "glob":                glob,
+    "execute_bash":        execute_bash,
 }
 
 TOOLS_SCHEMAS = [
@@ -269,7 +197,7 @@ TOOLS_SCHEMAS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "path":   {"type": "string", "description": "Ruta del archivo"},
+                "path":   {"type": "string",  "description": "Ruta del archivo"},
                 "limit":  {"type": "integer", "description": "Máx. caracteres a leer"},
                 "offset": {"type": "integer", "description": "Byte de inicio"},
             },
@@ -333,6 +261,20 @@ TOOLS_SCHEMAS = [
                 "path":    {"type": "string", "description": "Directorio raíz (default '.')"},
             },
             "required": ["pattern"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "execute_bash",
+        "description": "Ejecuta un comando bash en el sandbox. Usalo para npm install, npm run build, etc.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "cmd":     {"type": "string", "description": "Comando bash a ejecutar"},
+                "workdir": {"type": "string", "description": "Directorio de trabajo (default /home/user/workspace)"},
+            },
+            "required": ["cmd"],
             "additionalProperties": False,
         },
     },
