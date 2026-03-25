@@ -48,6 +48,31 @@ CÓMO RAZONAR ANTES DE ACTUAR
    y volvé a buildear. No declares victoria hasta que el build pase.
 
 ════════════════════════════════════════
+REGLAS OBLIGATORIAS PARA replace_in_file
+════════════════════════════════════════
+replace_in_file es la herramienta que más falla si se usa mal.
+Seguí estas reglas sin excepción:
+
+1. SIEMPRE llamá read_file inmediatamente antes de cualquier replace_in_file.
+   Nunca uses texto que recordás de pasos anteriores — el archivo puede haber
+   cambiado y tu memoria del contenido puede estar desactualizada.
+
+2. Copiá el fragmento OLD de forma EXACTA desde el resultado de read_file.
+   No reescribas el texto, no cambies espacios ni saltos de línea.
+   Los saltos de línea son \n reales, nunca la cadena literal "\\n".
+
+3. Si replace_in_file falla dos veces seguidas sobre el mismo archivo,
+   DEJÁ de intentar reemplazos parciales. En su lugar:
+   a. Llamá read_file para obtener el estado actual completo.
+   b. Construí el contenido corregido completo en memoria.
+   c. Usá write_file para sobreescribir el archivo entero.
+   Esto siempre funciona y es más seguro que acumular reemplazos fallidos.
+
+4. Nunca hagas más de un replace_in_file por paso sin leer el archivo
+   entre reemplazos. Cada edición puede cambiar el contenido que esperás
+   encontrar en el siguiente reemplazo.
+
+════════════════════════════════════════
 CUÁNDO USAR CADA HERRAMIENTA
 ════════════════════════════════════════
 | Herramienta           | Cuándo usarla                                        |
@@ -120,4 +145,9 @@ REGLAS GENERALES
 - NUNCA uses `ResolvingMetadata` de next/types.js — no exportes `metadata` con tipos complejos.
   Usá simplemente: `export const metadata = { title: '...', description: '...' };`
 - En tailwind.config.ts usá `moduleResolution: bundler` en tsconfig.json para evitar errores de tipos.
+- tsconfig.json SIEMPRE debe incluir el alias `@` apuntando a la raíz para que
+  los imports `@/components/...` funcionen. Agregalo en compilerOptions:
+      "baseUrl": ".",
+      "paths": { "@/*": ["./*"] }
+  Sin esto, cualquier import con `@/` falla en el build con "Module not found".
 """

@@ -166,6 +166,42 @@ print(json.dumps({{"stdout": result.stdout[:4000], "stderr": result.stderr[:4000
         return {"error": str(e), "success": False}
 
 
+def upload_file(sbx: Sandbox, local_path: str, sbx_path: str) -> Dict[str, Any]:
+    """
+    Lee un archivo binario de la PC local y lo escribe en el sandbox E2B.
+    Usa base64 para garantizar que los bytes lleguen intactos (imágenes, fuentes, etc).
+    """
+    import os
+    import base64
+    try:
+        if not os.path.exists(local_path):
+            return {"error": f"Archivo no encontrado en tu PC: {local_path}"}
+        with open(local_path, "rb") as f:
+            content = f.read()
+        size_kb = len(content) / 1024
+
+        # Encodear en base64 localmente y decodear dentro del sandbox.
+        # Esto evita que E2B corrompa los bytes al tratar el contenido como texto.
+        encoded = base64.b64encode(content).decode("utf-8")
+        code = f"""
+import base64, os
+data = base64.b64decode({repr(encoded)})
+os.makedirs(os.path.dirname({repr(sbx_path)}) or ".", exist_ok=True)
+with open({repr(sbx_path)}, "wb") as f:
+    f.write(data)
+print("ok")
+"""
+        _run(sbx, code)
+        return {
+            "message": f"✅ Subido: {local_path} → {sbx_path} ({size_kb:.1f} KB)",
+            "local_path": local_path,
+            "sbx_path": sbx_path,
+            "size_bytes": len(content),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 TOOLS_IMPL = {
     "list_directory":      list_directory,
     "read_file":           read_file,
@@ -174,6 +210,7 @@ TOOLS_IMPL = {
     "replace_in_file":     replace_in_file,
     "glob":                glob,
     "execute_bash":        execute_bash,
+    "upload_file":         upload_file,
 }
 
 TOOLS_SCHEMAS = [
@@ -275,6 +312,27 @@ TOOLS_SCHEMAS = [
                 "workdir": {"type": "string", "description": "Directorio de trabajo (default /home/user/workspace)"},
             },
             "required": ["cmd"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "type": "function",
+        "name": "upload_file",
+        "description": (
+            "Sube un archivo desde la PC local del usuario al sandbox E2B. "
+            "Usalo cuando el usuario quiera usar una imagen, fuente u otro asset "
+            "que tiene guardado en su computadora. "
+            "local_path es la ruta completa en la PC del usuario (ej: C:\\Users\\yo\\foto.jpg). "
+            "sbx_path es dónde guardarlo en el sandbox (ej: /home/user/workspace/mi-app/public/foto.jpg). "
+            "Los archivos en public/ quedan accesibles en Next.js como /foto.jpg."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "local_path": {"type": "string", "description": "Ruta completa del archivo en la PC local"},
+                "sbx_path":   {"type": "string", "description": "Ruta destino dentro del sandbox"},
+            },
+            "required": ["local_path", "sbx_path"],
             "additionalProperties": False,
         },
     },

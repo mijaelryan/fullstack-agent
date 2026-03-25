@@ -14,7 +14,7 @@ import json
 # Configuración
 # ---------------------------------------------------------------------------
 
-MAX_TOKENS        = 6_000   # tope en tokens estimados antes de comprimir
+MAX_TOKENS        = 4_000   # ← bajado de 6k a 4k para alejarnos del límite de 8k
 COMPRESSION_RATIO = 0.70     # fracción de mensajes antiguos a comprimir
 
 
