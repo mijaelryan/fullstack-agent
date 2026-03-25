@@ -1,3 +1,8 @@
+![Python](https://img.shields.io/badge/python-3.10+-blue)
+![Version](https://img.shields.io/badge/version-v2.0-orange)
+![LLM](https://img.shields.io/badge/LLM-GitHub%20Models%20gpt--4o-black)
+![Sandbox](https://img.shields.io/badge/sandbox-E2B-brightgreen)
+
 # 🤖 Full Stack Code Agent
 
 Agente que recibe instrucciones en lenguaje natural y genera una **app web completa en Next.js** dentro de un sandbox seguro E2B.
@@ -151,9 +156,11 @@ run_agent(query)
 | `write_file(path, content)` | Escribe un archivo (crea dirs intermedios) |
 | `search_file_content(pattern)` | Busca regex, devuelve JSON paginado |
 | `replace_in_file(path, old, new)` | Reemplaza texto en un archivo |
-| `glob(pattern)` | Busca archivos por nombre o extensión |
+| `glob(pattern)` | Busca archivos por nombre o extensión (`**/*.tsx`, etc.) |
 | `execute_bash(cmd)` | Corre comandos bash (npm install, npm run build, etc.) |
 | `upload_file(local_path, sbx_path)` | Sube un archivo local al sandbox (imágenes, fuentes, etc.) |
+
+> `download_workspace` no es una tool del agente — se ejecuta automáticamente al final de cada sesión y descarga el proyecto generado a `workspace/`.
 
 ---
 
@@ -232,3 +239,9 @@ Segunda versión del agente con mejoras clave respecto a v1.0:
   **Recomendado:**
   - Definir el nombre del proyecto explícitamente en el prompt inicial (ej: *"nombre del proyecto: X"*)
   - Mover el proyecto fuera de `workspace/` al finalizar
+
+---
+
+## 📜 Licencia
+
+Este proyecto está bajo la licencia MIT — ver el archivo [LICENSE](LICENSE) para más detalles.
