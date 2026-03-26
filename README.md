@@ -76,8 +76,13 @@ python -m venv .venv        # también funciona: python -m venv venv
 # Mac / Linux
 source .venv/bin/activate
 
-# Windows
+# Windows — PowerShell / CMD
 .venv\Scripts\activate
+
+# Windows — Git Bash
+source .venv/Scripts/activate
+
+> ⚠️ **Windows + Git Bash:** si `python -m venv .venv` falla con `KeyboardInterrupt`, es un bug intermitente de Python 3.12 con Git Bash. Solución: eliminá el entorno con `rm -rf .venv` y volvé a correr el comando — funciona al segundo intento.
 
 # 3. Instalar dependencias
 pip install -r requirements.txt
