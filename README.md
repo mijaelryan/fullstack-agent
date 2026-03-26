@@ -5,6 +5,8 @@
 
 # 🤖 Full Stack Code Agent
 
+> ⚡ Generá apps web completas con IA usando **LLMs gratuitos (sin tarjeta de crédito)** via GitHub Models
+
 Agente que recibe instrucciones en lenguaje natural y genera una **app web completa en Next.js** dentro de un sandbox seguro E2B.
 
 ## Stack
@@ -14,6 +16,25 @@ Agente que recibe instrucciones en lenguaje natural y genera una **app web compl
 | LLM | GitHub Models (`gpt-4o`) |
 | Sandbox | E2B Code Interpreter |
 | Framework generado | Next.js 14 + TypeScript + Tailwind |
+
+---
+
+## 💸 Costo
+
+Este proyecto corre **completamente gratis**:
+
+- ✅ Usa GitHub Models (tier gratuito) — no necesitás cuenta de OpenAI
+- ✅ E2B tiene tier gratuito para empezar
+- ❌ Sin tarjeta de crédito
+- ❌ Sin API paga
+
+> Ideal para estudiantes o cualquiera que quiera experimentar con agentes de IA sin presupuesto.
+
+**Límites del tier gratuito:**
+- ~50 requests/día por cuenta de GitHub
+- ~8k tokens por request (el agente comprime el historial automáticamente para mantenerse dentro del límite)
+
+---
 
 ## Estructura del repositorio
 
