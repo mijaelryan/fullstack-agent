@@ -84,7 +84,7 @@ Activar según tu terminal:
 
 > ⚠️ **Windows + Git Bash:** `python -m venv .venv` puede fallar con `KeyboardInterrupt`
 > de forma intermitente (bug conocido de Python 3.12 con Git Bash).
-> Si pasa, elimina el entorno y volvé a intentarlo:
+> Si pasa, eliminá el entorno y volvé a intentarlo:
 > ```bash
 > rm -rf .venv
 > python -m venv .venv
